@@ -33,6 +33,8 @@ type Frame struct {
 	NextBlock  uint32
 	Width      uint32
 	Height     uint32
+
+	IndexData []byte
 }
 
 // Load loads frame data
@@ -84,6 +86,8 @@ func (f *Frame) Load(r *bitstream.Reader, palette *color.Palette) error {
 		return fmt.Errorf("reading terminator: %w", err)
 	}
 
+	f.decodeFrame()
+
 	return nil
 }
 
@@ -109,7 +113,7 @@ func (f *Frame) Encode() []byte {
 func (f *Frame) ColorIndexAt(x, y int) uint8 {
 	idx := (y * int(f.Width)) + x
 
-	return f.FrameData[idx]
+	return f.IndexData[idx]
 }
 
 func (f *Frame) ColorModel() color.Model {

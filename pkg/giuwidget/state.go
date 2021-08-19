@@ -26,7 +26,7 @@ func (fv *FrameViewerDC6) initState() {
 			absoluteFrameIdx := (dirIdx * numFrames) + frameIdx
 
 			frame := fv.dc6.Frames.Direction(dirIdx).Frame(frameIdx)
-			pixels := frame.FrameData
+			pixels := frame.IndexData
 
 			if state.images[absoluteFrameIdx] == nil {
 				state.images[absoluteFrameIdx] = frame.ToImageRGBA()

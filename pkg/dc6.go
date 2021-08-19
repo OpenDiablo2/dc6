@@ -12,22 +12,11 @@ import (
 )
 
 const (
-	endOfScanLine = 0x80
-	maxRunLength  = 0x7f
-
 	terminationSize = 4
 
 	bytesPerInt32 = 4
 
 	expectedDC6Version = 6
-)
-
-type scanlineState int
-
-const (
-	endOfLine scanlineState = iota
-	runOfTransparentPixels
-	runOfOpaquePixels
 )
 
 // DC6 represents a DC6 file.
@@ -201,57 +190,6 @@ func (d *DC6) Encode() []byte {
 	return sw.GetBytes()
 }
 */
-
-// DecodeFrame decodes the given frame to an indexed color texture
-func (d *DC6) DecodeFrame(directionIndex, frameIndex int) []byte {
-	frame := d.Frames.Direction(directionIndex).Frame(frameIndex)
-
-	indexData := make([]byte, frame.Width*frame.Height)
-	x := 0
-	y := int(frame.Height) - 1
-	offset := 0
-
-loop: // this is a label for the loop, so the switch can break the loop (and not the switch)
-	for {
-		b := int(frame.FrameData[offset])
-		offset++
-
-		switch scanlineType(b) {
-		case endOfLine:
-			if y == 0 {
-				break loop
-			}
-
-			y--
-
-			x = 0
-		case runOfTransparentPixels:
-			transparentPixels := b & maxRunLength
-			x += transparentPixels
-		case runOfOpaquePixels:
-			for i := 0; i < b; i++ {
-				indexData[x+y*int(frame.Width)+i] = frame.FrameData[offset]
-				offset++
-			}
-
-			x += b
-		}
-	}
-
-	return indexData
-}
-
-func scanlineType(b int) scanlineState {
-	if b == endOfScanLine {
-		return endOfLine
-	}
-
-	if (b & endOfScanLine) > 0 {
-		return runOfTransparentPixels
-	}
-
-	return runOfOpaquePixels
-}
 
 // Clone creates a copy of the DC6
 func (d *DC6) Clone() *DC6 {

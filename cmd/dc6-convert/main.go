@@ -11,7 +11,7 @@ import (
 	"os"
 	"path/filepath"
 
-	dc6lib "github.com/gravestench/dc6/pkg"
+	dc6lib "github.com/OpenDiablo2/dc6/pkg"
 	gpl "github.com/gravestench/gpl/pkg"
 )
 
@@ -59,8 +59,8 @@ func main() {
 		dc6.SetPalette(color.Palette(*gplInstance))
 	}
 
-	numDirections := len(dc6.Directions)
-	framesPerDir := len(dc6.Directions[0].Frames)
+	numDirections := dc6.Frames.NumberOfDirections()
+	framesPerDir := dc6.Frames.FramesPerDirection()
 	isMultiFrame := numDirections > 1 || framesPerDir > 1
 
 	outfilePath := *o.pngPath
@@ -69,8 +69,8 @@ func main() {
 		outfilePath = noExt + "_d%v_f%v.png"
 	}
 
-	for dirIdx := range dc6.Directions {
-		for frameIdx := range dc6.Directions[dirIdx].Frames {
+	for dirIdx := 0; dirIdx < numDirections; dirIdx++ {
+		for frameIdx := 0; frameIdx < framesPerDir; frameIdx++ {
 			outPath := outfilePath
 
 			if isMultiFrame {
@@ -82,7 +82,7 @@ func main() {
 				log.Fatal(err)
 			}
 
-			if err := png.Encode(f, dc6.Directions[dirIdx].Frames[frameIdx]); err != nil {
+			if err := png.Encode(f, dc6.Frames.Direction(dirIdx).Frame(frameIdx)); err != nil {
 				_ = f.Close()
 				log.Fatal(err)
 			}
