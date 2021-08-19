@@ -1,4 +1,4 @@
-module github.com/gravestench/dc6
+module github.com/OpenDiablo2/dc6
 
 go 1.16
 

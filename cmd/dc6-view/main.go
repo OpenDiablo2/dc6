@@ -10,8 +10,8 @@ import (
 
 	"github.com/AllenDang/giu"
 
-	pdc6lib "github.com/gravestench/dc6/pkg"
-	dc6widget "github.com/gravestench/dc6/pkg/giuwidget"
+	pdc6lib "github.com/OpenDiablo2/dc6/pkg"
+	dc6widget "github.com/OpenDiablo2/dc6/pkg/giuwidget"
 	gpl "github.com/gravestench/gpl/pkg"
 )
 
@@ -63,7 +63,7 @@ func main() {
 		dc6.SetPalette(color.Palette(*gplInstance))
 	}
 
-	f0 := dc6.Directions[0].Frames[0]
+	f0 := dc6.Frames.Direction(0).Frame(0)
 
 	imgW := int(float64(f0.Width) * *o.scale)
 	imgH := int(float64(f0.Height) * *o.scale)

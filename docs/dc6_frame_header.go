@@ -1,7 +1,8 @@
-package pkg
+package docs
 
-// FrameHeader represents the header of a frame in a DC6.
-type FrameHeader struct {
+// DC6FrameHeader represents the header of a frame in a DC6.
+// this structure is unused in this module and is only a documentation
+type DC6FrameHeader struct {
 	Flipped   int32  `struct:"int32"`
 	Width     int32  `struct:"int32"`
 	Height    int32  `struct:"int32"`

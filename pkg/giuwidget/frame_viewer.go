@@ -7,7 +7,7 @@ import (
 
 	"github.com/AllenDang/giu"
 
-	dc6 "github.com/gravestench/dc6/pkg"
+	dc6 "github.com/OpenDiablo2/dc6/pkg"
 )
 
 func FrameViewer(id string, d *dc6.DC6) *FrameViewerDC6 {
@@ -53,7 +53,7 @@ func (p *FrameViewerDC6) Build() {
 	dirIdx := 0
 	frameIdx := 0
 
-	textureIdx := dirIdx*len(p.dc6.Directions[dirIdx].Frames) + frameIdx
+	textureIdx := dirIdx*p.dc6.Frames.FramesPerDirection() + frameIdx
 
 	err := giu.Context.GetRenderer().SetTextureMagFilter(giu.TextureFilterNearest)
 	if err != nil {
@@ -65,15 +65,15 @@ func (p *FrameViewerDC6) Build() {
 	if viewerState.textures == nil || len(viewerState.textures) <= int(frameIdx) || viewerState.textures[frameIdx] == nil {
 		frameImage = giu.Image(nil).Size(imageW, imageH)
 	} else {
-		bw := p.dc6.Directions[dirIdx].Frames[frameIdx].Width
-		bh := p.dc6.Directions[dirIdx].Frames[frameIdx].Height
+		bw := p.dc6.Frames.Direction(dirIdx).Frame(frameIdx).Width
+		bh := p.dc6.Frames.Direction(dirIdx).Frame(frameIdx).Height
 		w := float32(float64(bw) * imageScale)
 		h := float32(float64(bh) * imageScale)
 		frameImage = giu.Image(viewerState.textures[textureIdx]).Size(w, h)
 	}
 
-	//numDirections := len(p.dc6.Directions)
-	//numFrames := len(p.dc6.Directions[0].Frames)
+	// numDirections := len(p.dc6.Directions)
+	// numFrames := len(p.dc6.Directions[0].Frames)
 
 	giu.Layout{frameImage}.Build()
 }
