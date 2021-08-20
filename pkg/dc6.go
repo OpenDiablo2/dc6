@@ -6,7 +6,7 @@ import (
 	"image/color"
 	"math"
 
-	"github.com/gravestench/bitstream"
+	"github.com/OpenDiablo2/bitstream"
 
 	"github.com/OpenDiablo2/dc6/pkg/frames"
 )
