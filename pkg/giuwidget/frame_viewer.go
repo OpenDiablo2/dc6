@@ -25,10 +25,8 @@ type frameViewerState struct {
 	images   []*image.RGBA
 	textures []*giu.Texture
 
-	// nolint:unused,structcheck // will be used
-	frame int
-	// nolint:unused,structcheck // will be used
-	direction int
+	frame     int32
+	direction int32
 
 	scale float64
 }
@@ -57,8 +55,8 @@ func (fv *FrameViewerDC6) Build() {
 
 	imageScale := viewerState.scale
 
-	dirIdx := 0
-	frameIdx := 0
+	dirIdx := int(viewerState.direction)
+	frameIdx := int(viewerState.frame)
 
 	textureIdx := dirIdx*fv.dc6.Frames.FramesPerDirection() + frameIdx
 
@@ -79,11 +77,22 @@ func (fv *FrameViewerDC6) Build() {
 		frameImage = giu.Image(viewerState.textures[textureIdx]).Size(w, h)
 	}
 
-	// nolint:gocritic // will use later
-	// numDirections := len(p.dc6.Directions)
-	// numFrames := len(p.dc6.Directions[0].Frames)
+	numDirections := fv.dc6.Frames.NumberOfDirections()
+	numFrames := fv.dc6.Frames.FramesPerDirection()
 
-	giu.Layout{frameImage}.Build()
+	giu.Layout{
+		giu.Custom(func() {
+			if numDirections > 1 {
+				giu.SliderInt("direction", &viewerState.direction, 0, int32(numDirections-1)).Build()
+			}
+		}),
+		giu.Custom(func() {
+			if numFrames > 1 {
+				giu.SliderInt("frame", &viewerState.frame, 0, int32(numFrames-1)).Build()
+			}
+		}),
+		frameImage,
+	}.Build()
 }
 
 func (fv *FrameViewerDC6) getStateID() string {
