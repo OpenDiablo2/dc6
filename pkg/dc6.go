@@ -22,11 +22,10 @@ const (
 // DC6 represents a DC6 file.
 type DC6 struct {
 	Frames      *frames.Frames
+	palette     color.Palette
 	Flags       uint32
 	Encoding    uint32
 	Termination [terminationSize]byte
-
-	palette color.Palette
 }
 
 // New creates a new, empty DC6

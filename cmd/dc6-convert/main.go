@@ -32,6 +32,7 @@ func main() {
 	dc6Data, err := ioutil.ReadFile(*o.dc6Path)
 	if err != nil {
 		const fmtErr = "could not read file, %v"
+
 		fmt.Print(fmt.Errorf(fmtErr, err))
 
 		return
@@ -84,6 +85,7 @@ func main() {
 
 			if err := png.Encode(f, dc6.Frames.Direction(dirIdx).Frame(frameIdx)); err != nil {
 				_ = f.Close()
+
 				log.Fatal(err)
 			}
 

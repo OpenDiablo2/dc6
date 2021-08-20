@@ -22,19 +22,17 @@ func newFrame() *Frame {
 
 // Frame represents a single frame in a DC6.
 type Frame struct {
-	palette *color.Palette
-
+	palette    *color.Palette
 	FrameData  []byte
 	Terminator []byte
+	IndexData  []byte
 	Flipped    uint32
-	OffsetX    int32
 	OffsetY    int32
 	Unknown    uint32
 	NextBlock  uint32
 	Width      uint32
 	Height     uint32
-
-	IndexData []byte
+	OffsetX    int32
 }
 
 // Load loads frame data
@@ -110,16 +108,19 @@ func (f *Frame) Encode() []byte {
 }
 */
 
+// ColorIndexAt returns color value at given x,y
 func (f *Frame) ColorIndexAt(x, y int) uint8 {
 	idx := (y * int(f.Width)) + x
 
 	return f.IndexData[idx]
 }
 
+// ColorModel implements image.Image
 func (f *Frame) ColorModel() color.Model {
 	return color.RGBAModel
 }
 
+// Bounds returns frame bounds
 func (f *Frame) Bounds() image.Rectangle {
 	origin := image.Point{X: int(f.OffsetX), Y: int(f.OffsetY)}
 	delta := image.Point{X: int(f.Width), Y: int(f.Height)}
@@ -130,12 +131,14 @@ func (f *Frame) Bounds() image.Rectangle {
 	}
 }
 
+// At implements image.Image
 func (f *Frame) At(x, y int) color.Color {
 	cidx := f.ColorIndexAt(x, y)
 
 	return (*f.palette)[cidx]
 }
 
+// ToImageRGBA converts frame to image.RGBA
 func (f *Frame) ToImageRGBA() *image.RGBA {
 	img := image.NewRGBA(image.Rectangle{
 		Max: f.Bounds().Size(),

@@ -7,6 +7,7 @@ import (
 	"image/color"
 	"io/ioutil"
 	"path"
+	"path/filepath"
 
 	"github.com/AllenDang/giu"
 
@@ -32,7 +33,7 @@ func main() {
 
 	srcPath := *o.dc6Path
 
-	fileContents, err := ioutil.ReadFile(srcPath)
+	fileContents, err := ioutil.ReadFile(filepath.Clean(srcPath))
 	if err != nil {
 		const fmtErr = "could not read file, %w"
 
