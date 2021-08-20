@@ -13,19 +13,19 @@ func (fv *FrameViewerDC6) initState() {
 
 	fv.setState(state)
 
-	numDirections := len(fv.dc6.Directions)
-	numFrames := len(fv.dc6.Directions[0].Frames)
+	numDirections := fv.dc6.Frames.NumberOfDirections()
+	numFrames := fv.dc6.Frames.FramesPerDirection()
 	totalFrames := numDirections * numFrames
 	state.images = make([]*image.RGBA, totalFrames)
 
-	for dirIdx := range fv.dc6.Directions {
-		for frameIdx := range fv.dc6.Directions[dirIdx].Frames {
-			fw := int(fv.dc6.Directions[dirIdx].Frames[frameIdx].Width)
-			fh := int(fv.dc6.Directions[dirIdx].Frames[frameIdx].Height)
+	for dirIdx := 0; dirIdx < fv.dc6.Frames.NumberOfDirections(); dirIdx++ {
+		for frameIdx := 0; frameIdx < fv.dc6.Frames.FramesPerDirection(); frameIdx++ {
+			fw := int(fv.dc6.Frames.Direction(dirIdx).Frame(frameIdx).Width)
+			fh := int(fv.dc6.Frames.Direction(dirIdx).Frame(frameIdx).Height)
 
 			absoluteFrameIdx := (dirIdx * numFrames) + frameIdx
 
-			frame := fv.dc6.Directions[dirIdx].Frames[frameIdx]
+			frame := fv.dc6.Frames.Direction(dirIdx).Frame(frameIdx)
 			pixels := frame.IndexData
 
 			if state.images[absoluteFrameIdx] == nil {

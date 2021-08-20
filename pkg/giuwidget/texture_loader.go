@@ -32,9 +32,9 @@ type TextureLoader interface {
 
 // textureLoader allows app to load textures and avoid unexpected panics
 type textureLoader struct {
-	canLoadTextures bool
 	mutex           *sync.Mutex
 	loadQueue       *goconcurrentqueue.FIFO
+	canLoadTextures bool
 }
 
 // newTextureLoader creates a new texture loader

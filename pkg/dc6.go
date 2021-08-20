@@ -1,216 +1,197 @@
 package pkg
 
 import (
+	"errors"
 	"fmt"
 	"image/color"
 	"math"
 
-	"github.com/gravestench/bitstream"
+	"github.com/OpenDiablo2/bitstream"
+
+	"github.com/OpenDiablo2/dc6/pkg/frames"
 )
 
 const (
-	endOfScanLine = 0x80
-	maxRunLength  = 0x7f
-)
+	terminationSize = 4
 
-type scanlineState int
+	bytesPerInt32 = 4
 
-const (
-	endOfLine scanlineState = iota
-	runOfTransparentPixels
-	runOfOpaquePixels
+	expectedDC6Version = 6
 )
 
 // DC6 represents a DC6 file.
 type DC6 struct {
-	Version     int32
+	Frames      *frames.Frames
+	palette     color.Palette
 	Flags       uint32
 	Encoding    uint32
-	Termination []byte // 4 bytes
-	Directions  []*Direction
-	palette     color.Palette
+	Termination [terminationSize]byte
 }
 
-type Direction struct {
-	Frames []*Frame // size is Directions*FramesPerDirection
+// New creates a new, empty DC6
+func New() *DC6 {
+	result := &DC6{
+		Flags:    0,
+		Encoding: 0,
+		Frames:   frames.New(),
+	}
+
+	result.SetPalette(nil)
+
+	return result
 }
 
-// FromBytes uses restruct to read the binary dc6 data into structs then parses image data from the frame data.
-func FromBytes(data []byte) (result *DC6, err error) {
-	result = &DC6{}
+// FromBytes loads a dc6 animation
+func FromBytes(data []byte) (*DC6, error) {
+	d := New()
 
-	stream := bitstream.NewReader().FromBytes(data...)
-
-	if err = result.decodeHeader(stream); err != nil {
+	if err := d.FromBytes(data); err != nil {
 		return nil, err
 	}
 
-	if err = result.decodeBody(stream); err != nil {
-		return nil, err
-	}
-
-	return result, nil
+	return d, nil
 }
 
-func (d *DC6) decodeHeader(stream *bitstream.Reader) (err error) {
-	const (
-		versionBytes     = 4
-		flagsBytes       = 4
-		encodingBytes    = 4
-		terminationBytes = 4
-	)
+// FromBytes converts bite slice into DC6 structure
+func (d *DC6) FromBytes(data []byte) error {
+	var err error
 
-	// only check last err
-	d.Version, _ = stream.Next(versionBytes).Bytes().AsInt32()
-	d.Flags, _ = stream.Next(flagsBytes).Bytes().AsUInt32()
-	d.Encoding, _ = stream.Next(encodingBytes).Bytes().AsUInt32()
-	d.Termination, err = stream.Next(terminationBytes).Bytes().AsBytes()
+	r := bitstream.ReaderFromBytes(data...)
 
-	return err
+	err = d.loadHeader(r)
+	if err != nil {
+		return err
+	}
+
+	frameCount := d.Frames.NumberOfDirections() * d.Frames.FramesPerDirection()
+
+	// frame pointers - skip
+	_, err = r.Next(frameCount * bytesPerInt32).Bytes().AsBytes()
+	if err != nil {
+		return fmt.Errorf("reading frame pointers: %w", err)
+	}
+
+	return d.loadFrames(r)
 }
 
-func (d *DC6) decodeBody(stream *bitstream.Reader) (err error) {
-	const (
-		terminatorSize          = 3
-		directionsBytes         = 4
-		framesPerDirectionBytes = 4
-		framePointerBytes       = 4
-	)
+func (d *DC6) loadHeader(r *bitstream.Reader) error {
+	var err error
 
-	const (
-		frameFlippedBytes   = 4
-		frameWidthBytes     = 4
-		frameHeightBytes    = 4
-		frameOffsetXBytes   = 4
-		frameOffsetYBytes   = 4
-		frameUnknownBytes   = 4
-		frameNextBlockBytes = 4
-		frameLengthBytes    = 4
-	)
+	r.Next(bytesPerInt32) // set readed data size to 4 bytes
 
-	numDirections, _ := stream.Next(directionsBytes).Bytes().AsUInt32()
-	framesPerDirection, err := stream.Next(framesPerDirectionBytes).Bytes().AsUInt32()
-	totalFrames := int(numDirections * framesPerDirection)
-
-	d.Directions = make([]*Direction, numDirections)
-
-	for i := 0; i < totalFrames; i++ {
-		if _, err = stream.Next(framePointerBytes).Bytes().AsUInt32(); err != nil {
-			return err
-		}
+	version, err := r.Bytes().AsInt32()
+	if err != nil {
+		return fmt.Errorf("reading version: %w", err)
 	}
 
-	for idx := 0; idx < totalFrames; idx++ {
-		dirIdx := idx / int(framesPerDirection)
-		frameIdx := idx % int(framesPerDirection)
-
-		if d.Directions[dirIdx] == nil {
-			d.Directions[dirIdx] = &Direction{}
-		}
-
-		if d.Directions[dirIdx].Frames == nil {
-			d.Directions[dirIdx].Frames = make([]*Frame, framesPerDirection)
-		}
-
-		frame := &Frame{dc6: d}
-
-		// toss the errors, only check last err
-		frame.Flipped, _ = stream.Next(frameFlippedBytes).Bytes().AsUInt32()
-		frame.Width, _ = stream.Next(frameWidthBytes).Bytes().AsUInt32()
-		frame.Height, _ = stream.Next(frameHeightBytes).Bytes().AsUInt32()
-		frame.OffsetX, _ = stream.Next(frameOffsetXBytes).Bytes().AsInt32()
-		frame.OffsetY, _ = stream.Next(frameOffsetYBytes).Bytes().AsInt32()
-		frame.Unknown, _ = stream.Next(frameUnknownBytes).Bytes().AsUInt32()
-		frame.NextBlock, _ = stream.Next(frameNextBlockBytes).Bytes().AsUInt32()
-		frame.Length, _ = stream.Next(frameLengthBytes).Bytes().AsUInt32()
-		frame.FrameData, _ = stream.Next(int(frame.Length)).Bytes().AsBytes()
-		frame.Terminator, err = stream.Next(terminatorSize).Bytes().AsBytes()
-
-		if err != nil {
-			return fmt.Errorf("could not decode body, %w", err)
-		}
-
-		d.Directions[dirIdx].Frames[frameIdx] = frame
+	if version != expectedDC6Version {
+		return errors.New("unexpected dc6 version")
 	}
 
-	for idx := range d.Directions {
-		d.Directions[idx].decodeFrames()
+	if d.Flags, err = r.Bytes().AsUInt32(); err != nil {
+		return fmt.Errorf("reading flags: %w", err)
+	}
+
+	if d.Encoding, err = r.Bytes().AsUInt32(); err != nil {
+		return fmt.Errorf("reading encoding type: %w", err)
+	}
+
+	termination, err := r.Next(terminationSize).Bytes().AsBytes()
+	if err != nil {
+		return fmt.Errorf("reading termination: %w", err)
+	}
+
+	copy(d.Termination[:], termination)
+
+	r.Next(bytesPerInt32) // set readed data size to 4 bytes
+
+	directions, err := r.Bytes().AsUInt32()
+	if err != nil {
+		return fmt.Errorf("reading directions number: %w", err)
+	}
+
+	d.Frames.SetNumberOfDirections(int(directions))
+
+	framesPerDirection, err := r.Bytes().AsUInt32()
+	if err != nil {
+		return fmt.Errorf("error reading a number of frames per direction: %w", err)
+	}
+
+	d.Frames.SetFramesPerDirection(int(framesPerDirection))
+
+	return nil
+}
+
+func (d *DC6) loadFrames(r *bitstream.Reader) (err error) {
+	for dir := 0; dir < d.Frames.NumberOfDirections(); dir++ {
+		for f := 0; f < d.Frames.FramesPerDirection(); f++ {
+			err = d.Frames.Direction(dir).Frame(f).Load(r, &d.palette)
+			if err != nil {
+				return fmt.Errorf("error loading frame %d at direction %d: %w", f, dir, err)
+			}
+		}
 	}
 
 	return nil
 }
 
-// decodeFrame decodes the given frame to an indexed color texture
-func (d *Direction) decodeFrames() {
-	for idx := range d.Frames {
-		d.decodeFrame(idx)
-	}
-}
+/* TODO: rewrite to use gravestench/bitstream
+// Encode encodes dc6 animation back into byte slice
+func (d *DC6) Encode() []byte {
+	sw := d2datautils.CreateStreamWriter()
 
-func (d *Direction) decodeFrame(frameIndex int) {
-	frame := d.Frames[frameIndex]
+	// Encode header
+	sw.PushInt32(expectedDC6Version)
+	sw.PushUint32(d.Flags)
+	sw.PushUint32(d.Encoding)
 
-	indexData := make([]byte, frame.Width*frame.Height)
-	x := 0
-	y := int(frame.Height) - 1
-	offset := 0
+	sw.PushBytes(d.Termination[:]...)
 
-loop: // this is a label for the loop, so the switch can break the loop (and not the switch)
-	for {
-		b := int(frame.FrameData[offset])
-		offset++
+	sw.PushUint32(uint32(d.Frames.NumberOfDirections()))
+	sw.PushUint32(uint32(d.Frames.FramesPerDirection()))
 
-		switch scanlineType(b) {
-		case endOfLine:
-			if y == 0 {
-				break loop
-			}
+	numDirs := d.Frames.NumberOfDirections()
+	fpd := d.Frames.FramesPerDirection()
 
-			y--
-
-			x = 0
-		case runOfTransparentPixels:
-			transparentPixels := b & maxRunLength
-			x += transparentPixels
-		case runOfOpaquePixels:
-			for i := 0; i < b; i++ {
-				indexData[x+y*int(frame.Width)+i] = frame.FrameData[offset]
-				offset++
-			}
-
-			x += b
+	// encode frames
+	framesData := make([][][]byte, numDirs)
+	for dir := 0; dir < numDirs; dir++ {
+		framesData[dir] = make([][]byte, fpd)
+		for f := 0; f < fpd; f++ {
+			framesData[dir][f] = d.Frames.Direction(dir).Frame(f).Encode()
 		}
 	}
 
-	frame.IndexData = indexData
-}
+	// current position in stream - terrible workaround,
+	// but d2datautils.StreamWriter doesn't currently hav any
+	// method to get byte position
+	currentPosition := 24
 
-func scanlineType(b int) scanlineState {
-	if b == endOfScanLine {
-		return endOfLine
+	// frames data starts afte a frame pointers section
+	currentPosition += numDirs * fpd * bytesPerInt32
+
+	// encode frame pointers
+	for dir := 0; dir < numDirs; dir++ {
+		for f := 0; f < fpd; f++ {
+			sw.PushUint32(uint32(currentPosition))
+			currentPosition += len(framesData[dir][f])
+		}
 	}
 
-	if (b & endOfScanLine) > 0 {
-		return runOfTransparentPixels
+	for _, dirData := range framesData {
+		for _, frameData := range dirData {
+			sw.PushBytes(frameData...)
+		}
 	}
 
-	return runOfOpaquePixels
+	return sw.GetBytes()
 }
+*/
 
 // Clone creates a copy of the DC6
 func (d *DC6) Clone() *DC6 {
 	clone := *d
-
-	copy(clone.Termination, d.Termination)
-
-	clone.Directions = make([]*Direction, len(d.Directions))
-	for dirIdx := range d.Directions {
-		clone.Directions[dirIdx].Frames = make([]*Frame, len(d.Directions[dirIdx].Frames))
-		for frameIdx := range d.Directions[dirIdx].Frames {
-			frame := *d.Directions[dirIdx].Frames[frameIdx]
-			clone.Directions[dirIdx].Frames[frameIdx] = &frame
-		}
-	}
+	clone.Frames = d.Frames.Clone()
 
 	return &clone
 }

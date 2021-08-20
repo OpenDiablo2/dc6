@@ -7,11 +7,12 @@ import (
 	"image/color"
 	"io/ioutil"
 	"path"
+	"path/filepath"
 
 	"github.com/AllenDang/giu"
 
-	pdc6lib "github.com/gravestench/dc6/pkg"
-	dc6widget "github.com/gravestench/dc6/pkg/giuwidget"
+	dc6lib "github.com/OpenDiablo2/dc6/pkg"
+	dc6widget "github.com/OpenDiablo2/dc6/pkg/giuwidget"
 	gpl "github.com/gravestench/gpl/pkg"
 )
 
@@ -32,7 +33,7 @@ func main() {
 
 	srcPath := *o.dc6Path
 
-	fileContents, err := ioutil.ReadFile(srcPath)
+	fileContents, err := ioutil.ReadFile(filepath.Clean(srcPath))
 	if err != nil {
 		const fmtErr = "could not read file, %w"
 
@@ -41,7 +42,7 @@ func main() {
 		return
 	}
 
-	dc6, err := pdc6lib.FromBytes(fileContents)
+	dc6, err := dc6lib.FromBytes(fileContents)
 	if err != nil {
 		fmt.Print(err)
 		return
@@ -63,7 +64,7 @@ func main() {
 		dc6.SetPalette(color.Palette(*gplInstance))
 	}
 
-	f0 := dc6.Directions[0].Frames[0]
+	f0 := dc6.Frames.Direction(0).Frame(0)
 
 	imgW := int(float64(f0.Width) * *o.scale)
 	imgH := int(float64(f0.Height) * *o.scale)

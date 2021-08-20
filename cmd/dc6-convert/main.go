@@ -11,7 +11,7 @@ import (
 	"os"
 	"path/filepath"
 
-	dc6lib "github.com/gravestench/dc6/pkg"
+	dc6lib "github.com/OpenDiablo2/dc6/pkg"
 	gpl "github.com/gravestench/gpl/pkg"
 )
 
@@ -32,6 +32,7 @@ func main() {
 	dc6Data, err := ioutil.ReadFile(*o.dc6Path)
 	if err != nil {
 		const fmtErr = "could not read file, %v"
+
 		fmt.Print(fmt.Errorf(fmtErr, err))
 
 		return
@@ -59,8 +60,8 @@ func main() {
 		dc6.SetPalette(color.Palette(*gplInstance))
 	}
 
-	numDirections := len(dc6.Directions)
-	framesPerDir := len(dc6.Directions[0].Frames)
+	numDirections := dc6.Frames.NumberOfDirections()
+	framesPerDir := dc6.Frames.FramesPerDirection()
 	isMultiFrame := numDirections > 1 || framesPerDir > 1
 
 	outfilePath := *o.pngPath
@@ -69,8 +70,8 @@ func main() {
 		outfilePath = noExt + "_d%v_f%v.png"
 	}
 
-	for dirIdx := range dc6.Directions {
-		for frameIdx := range dc6.Directions[dirIdx].Frames {
+	for dirIdx := 0; dirIdx < numDirections; dirIdx++ {
+		for frameIdx := 0; frameIdx < framesPerDir; frameIdx++ {
 			outPath := outfilePath
 
 			if isMultiFrame {
@@ -82,8 +83,9 @@ func main() {
 				log.Fatal(err)
 			}
 
-			if err := png.Encode(f, dc6.Directions[dirIdx].Frames[frameIdx]); err != nil {
+			if err := png.Encode(f, dc6.Frames.Direction(dirIdx).Frame(frameIdx)); err != nil {
 				_ = f.Close()
+
 				log.Fatal(err)
 			}
 
@@ -95,7 +97,7 @@ func main() {
 }
 
 func parseOptions(o *options) (terminate bool) {
-	o.dc6Path = flag.String("dc6lib", "", "input dc6lib file (required)")
+	o.dc6Path = flag.String("dc6", "", "input dc6lib file (required)")
 	o.palPath = flag.String("pal", "", "input pal file (optional)")
 	o.pngPath = flag.String("png", "", "path to png file (optional)")
 
