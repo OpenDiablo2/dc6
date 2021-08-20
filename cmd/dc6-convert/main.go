@@ -97,7 +97,7 @@ func main() {
 }
 
 func parseOptions(o *options) (terminate bool) {
-	o.dc6Path = flag.String("dc6lib", "", "input dc6lib file (required)")
+	o.dc6Path = flag.String("dc6", "", "input dc6lib file (required)")
 	o.palPath = flag.String("pal", "", "input pal file (optional)")
 	o.pngPath = flag.String("png", "", "path to png file (optional)")
 
