@@ -123,9 +123,7 @@ func (d *DC6) loadHeader(r *bitstream.Reader) error {
 	return nil
 }
 
-func (d *DC6) loadFrames(r *bitstream.Reader) error {
-	var err error
-
+func (d *DC6) loadFrames(r *bitstream.Reader) (err error) {
 	for dir := 0; dir < d.Frames.NumberOfDirections(); dir++ {
 		for f := 0; f < d.Frames.FramesPerDirection(); f++ {
 			err = d.Frames.Direction(dir).Frame(f).Load(r, &d.palette)
