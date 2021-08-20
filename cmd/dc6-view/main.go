@@ -10,7 +10,7 @@ import (
 
 	"github.com/AllenDang/giu"
 
-	pdc6lib "github.com/OpenDiablo2/dc6/pkg"
+	dc6lib "github.com/OpenDiablo2/dc6/pkg"
 	dc6widget "github.com/OpenDiablo2/dc6/pkg/giuwidget"
 	gpl "github.com/gravestench/gpl/pkg"
 )
@@ -41,7 +41,7 @@ func main() {
 		return
 	}
 
-	dc6, err := pdc6lib.FromBytes(fileContents)
+	dc6, err := dc6lib.FromBytes(fileContents)
 	if err != nil {
 		fmt.Print(err)
 		return
